@@ -33,12 +33,6 @@ function initialiseAce(doc) {
     const Session = editor.getSession()
     const aceDoc = Session.getDocument()
 
-    // multi cursor setup
-    const curMgr = new AceCollabExt.AceMultiCursorManager(editor.getSession())
-    const selMgr = new AceCollabExt.AceMultiSelectionManager(editor.getSession())
-    const Selection = Session.getSelection()
-    const Range = ace.require("ace/range").Range
-
     let localChange = false;
 
     // to prevent changes made programatically to trigger on change event
@@ -67,32 +61,98 @@ function initialiseAce(doc) {
         localChange = false
     })
 
+
+    // multi cursor setup
+    const presence = doc.connection.getDocPresence(collection, id)
+
+    presence.subscribe(function (error) {
+        if (error) throw error;
+    })
+
+    const localPresence = presence.create(userId);
+
+    const curMgr = new AceCollabExt.AceMultiCursorManager(editor.getSession())
+    const selMgr = new AceCollabExt.AceMultiSelectionManager(editor.getSession())
+    const Selection = Session.getSelection()
+    const Range = ace.require("ace/range").Range
+
     Selection.on("changeCursor", () => {
         setTimeout(() => {
             const range = Selection.getRange()
-            const selection = getSelectionIndex(range)
+            const selection = getSelection(range)
+
+            if (!selection)
+                return;
+
+            // range.name = nameInput.value;
+            localPresence.submit(selection, function (err) {
+                if (err) throw err
+            });
 
         }, 0)
     })
 
-    function getSelectionIndex(range) {
-        const cursor = Selection.getCursor()
-        const cursorPos = aceDoc.positionToIndex(cursor)
+    presence.on('receive', function (id, range) {
+        if (id === userId) return
+
+        colors[id] = colors[id] || tinycolor.random().toHexString();
+        const name = (range && range.name) || 'Anonymous';
+
+        if (!range) return
+
+        // set cursor
+        try {
+            curMgr.addCursor(id, name, colors[id], range.index);
+        } catch (e) {
+            curMgr.setCursor(id, range.index);
+        }
+        // set selection
+        // const start = aceDoc.indexToPosition(range.index)
+        // const end = aceDoc.indexToPosition(range.index + range.length)
+
+        // const selectedRanges = getSelectionRanges(start, end)
+
+        // if (!selectedRanges) return
+        // console.log(selectedRanges);
+        // try {
+        //     selMgr.addSelection(id, name, colors[id], selectedRanges);
+        // }
+        // catch (e) {
+        //     selMgr.setSelection(id, selectedRanges)
+        // }
+    })
+
+    function getSelection(range) {
         const startPos = aceDoc.positionToIndex(range.start)
         const endPos = aceDoc.positionToIndex(range.end)
 
-        // start is where the selection began and end is where the selection ended, end is also the cursor position
-        let start, end;
-        if (cursorPos === startPos) {
-            end = cursorPos
-            start = endPos
-        }
-        else {
-            end = endPos
-            start = startPos
+        return { index: startPos, length: endPos - startPos }
+    }
+
+    function getSelectionRanges(start, end) {
+        const selectedRanges = []
+
+        if (start.row === end.row && start.column === end.column) {
+            return [start]
         }
 
-        return [start, end]
+        const nLines = end.row - start.row + 1
+
+        let lastColumn = Session.getDocumentLastRowColumn(start.row, 0)
+        selectedRanges.push(new Range(start.row, start.column, start.row, lastColumn))
+
+        if (nLines === 1)
+            return selectedRanges
+
+        for (let i = 1; i < nLines; i++) {
+            lastColumn = Session.getDocumentLastRowColumn(start.row + i, 0)
+            selectedRanges.push(new Range(start.row + i, 0, start.row + i, lastColumn))
+        }
+        lastColumn = Session.getDocumentLastRowColumn(end.row, 0)
+        selectedRanges.push(new Range(end.row, 0, end.row, lastColumn))
+
+
+        return selectedRanges
     }
 }
 
@@ -170,32 +230,6 @@ function applyOps(aceDoc, ops) {
 }
 
 
-
-// function getSelectionRanges({ start, end }) {
-//     const selectedRanges = []
-
-//     if (start.row === end.row && start.column === end.column) {
-//         return [start]
-//     }
-
-//     const nLines = end.row - start.row + 1
-
-//     let lastColumn = editor.session.getDocumentLastRowColumn(start.row, 0)
-//     selectedRanges.push(new Range(start.row, start.column, start.row, lastColumn))
-
-//     if (nLines === 1)
-//         return selectedRanges
-
-//     for (let i = 1; i < nLines; i++) {
-//         lastColumn = editor.session.getDocumentLastRowColumn(start.row + i, 0)
-//         selectedRanges.push(new Range(start.row + i, 0, start.row + i, lastColumn))
-//     }
-//     lastColumn = editor.session.getDocumentLastRowColumn(end.row, 0)
-//     selectedRanges.push(new Range(end.row, 0, end.row, lastColumn))
-
-
-//     return selectedRanges
-// }
 },{"bson-objectid":2,"reconnecting-websocket":18,"rich-text":19,"sharedb/lib/client":23,"tinycolor2":44}],2:[function(require,module,exports){
 (function (process){(function (){
 
