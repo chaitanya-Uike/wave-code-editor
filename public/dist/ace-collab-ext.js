@@ -520,7 +520,7 @@
                     const cursorTop = top + 2;
                     const cursorHeight = height - 3;
                     const cursorLeft = left;
-                    const cursorWidth = 2;
+                    const cursorWidth = 3;
                     this._cursorElement.style.height = `${cursorHeight}px`;
                     this._cursorElement.style.width = `${cursorWidth}px`;
                     this._cursorElement.style.top = `${cursorTop}px`;

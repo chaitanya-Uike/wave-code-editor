@@ -28,7 +28,11 @@ function initialiseAce(doc) {
     const editor = ace.edit("editor")
     editor.setTheme("ace/theme/monokai")
     editor.session.setMode("ace/mode/javascript")
-    editor.setOption("enableMultiselect", false)
+    editor.setOptions({
+        enableMultiselect: false,
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: false,
+    })
 
     const Session = editor.getSession()
     const aceDoc = Session.getDocument()
@@ -98,7 +102,16 @@ function initialiseAce(doc) {
         colors[id] = colors[id] || tinycolor.random().toHexString();
         const name = (range && range.name) || 'Anonymous';
 
-        if (!range) return
+
+        if (!range) {
+            try {
+                curMgr.removeCursor(id)
+                selMgr.removeSelection(id)
+            } catch (err) {
+                console.log(err);
+            }
+            return
+        }
 
         // set cursor
         try {
@@ -106,20 +119,20 @@ function initialiseAce(doc) {
         } catch (e) {
             curMgr.setCursor(id, range.index);
         }
-        // set selection
-        // const start = aceDoc.indexToPosition(range.index)
-        // const end = aceDoc.indexToPosition(range.index + range.length)
 
-        // const selectedRanges = getSelectionRanges(start, end)
+        const start = aceDoc.indexToPosition(range.index)
+        const end = aceDoc.indexToPosition(range.index + range.length)
 
-        // if (!selectedRanges) return
-        // console.log(selectedRanges);
-        // try {
-        //     selMgr.addSelection(id, name, colors[id], selectedRanges);
-        // }
-        // catch (e) {
-        //     selMgr.setSelection(id, selectedRanges)
-        // }
+        const selectedRanges = getSelectionRanges(start, end)
+
+        if (!selectedRanges) return
+
+        try {
+            selMgr.addSelection(id, name, colors[id], selectedRanges);
+        }
+        catch (e) {
+            selMgr.setSelection(id, selectedRanges)
+        }
     })
 
     function getSelection(range) {
@@ -130,29 +143,30 @@ function initialiseAce(doc) {
     }
 
     function getSelectionRanges(start, end) {
-        const selectedRanges = []
+        let selectedRanges = []
 
-        if (start.row === end.row && start.column === end.column) {
-            return [start]
+        const nLines = end.row - start.row + 1;
+
+        if (nLines === 1) {
+            selectedRanges.push(new Range(start.row, start.column, end.row, end.column))
+            return selectedRanges
         }
 
-        const nLines = end.row - start.row + 1
-
-        let lastColumn = Session.getDocumentLastRowColumn(start.row, 0)
+        let lastColumn;
+        // first line
+        lastColumn = Session.getDocumentLastRowColumn(start)
         selectedRanges.push(new Range(start.row, start.column, start.row, lastColumn))
 
-        if (nLines === 1)
-            return selectedRanges
-
-        for (let i = 1; i < nLines; i++) {
+        // middle lines
+        for (let i = 1; i < nLines - 1; i++) {
             lastColumn = Session.getDocumentLastRowColumn(start.row + i, 0)
             selectedRanges.push(new Range(start.row + i, 0, start.row + i, lastColumn))
         }
-        lastColumn = Session.getDocumentLastRowColumn(end.row, 0)
-        selectedRanges.push(new Range(end.row, 0, end.row, lastColumn))
 
+        // last lines
+        selectedRanges.push(new Range(end.row, 0, end.row, end.column))
 
-        return selectedRanges
+        return selectedRanges;
     }
 }
 
