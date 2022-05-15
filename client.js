@@ -30,7 +30,7 @@ function initialiseAce(doc) {
     editor.setOptions({
         enableMultiselect: false,
         enableBasicAutocompletion: true,
-        enableLiveAutocompletion: false,
+        enableLiveAutocompletion: true,
         indentedSoftWrap: false,
     })
 
@@ -51,15 +51,23 @@ function initialiseAce(doc) {
             // local changes so skip
             return
         }
+        console.log('delta', delta);
         const op = aceToQuillDelta(aceDoc, delta)
 
-        doc.submitOp(op)
+        doc.whenNothingPending((err) => {
+            if (err) {
+                console.log(err);
+                return
+            }
+            doc.submitOp(op)
+        })
     })
 
     doc.on('op', (ops, source) => {
         if (source) {
             return
         }
+        console.log('ops', ops)
         // to prevent changes made programatically to trigger on change event
         // change is a synchronus event in ace so this works
         localChange = true
@@ -241,6 +249,7 @@ function QuillToAceDelta(aceDoc, ops) {
 function applyOps(aceDoc, ops) {
     // converts the ops provided by shareDB doc 'op' event to Ace delta and applies them
     const deltas = QuillToAceDelta(aceDoc, ops)
+    console.log('deltas', deltas)
     // apply the deltas
     aceDoc.applyDeltas(deltas)
 }
