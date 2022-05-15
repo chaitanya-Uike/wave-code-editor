@@ -31,7 +31,10 @@ function initialiseAce(doc) {
         enableMultiselect: false,
         enableBasicAutocompletion: true,
         enableLiveAutocompletion: false,
+        indentedSoftWrap: false,
     })
+
+    editor.setOption('wrap', true)
 
     const Session = editor.getSession()
     const aceDoc = Session.getDocument()
@@ -219,7 +222,6 @@ function QuillToAceDelta(aceDoc, ops) {
                     column: delta.lines[delta.lines.length - 1].length,
                 }
             }
-            pointer += operation.insert.length
             deltas.push(delta)
         }
         else {
@@ -227,6 +229,7 @@ function QuillToAceDelta(aceDoc, ops) {
             // initialize accumulater with lines.length - 1 to take '\n' into account
             const count = operation.delete
             delta.end = aceDoc.indexToPosition(pointer + count)
+            pointer += count
             deltas.push(delta)
         }
     })

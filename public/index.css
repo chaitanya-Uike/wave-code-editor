@@ -10,7 +10,19 @@
 }
 
 #editor {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
     font-size: 22px;
+}
+
+.editor-body {
+    height: 100%;
+    position: relative;
+}
+
+.code-editor-toolbar {
+    height: 50px;
 }
